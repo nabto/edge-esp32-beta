@@ -346,6 +346,7 @@ bool handle_main(struct tcp_tunnel* tunnel)
     nabto_device_set_product_id(device, dc.productId);
     nabto_device_set_device_id(device, dc.deviceId);
     nabto_device_set_server_url(device, dc.server);
+    nabto_device_limit_stream_segments(device, 100);
     nabto_device_enable_mdns(device);
 
 
