@@ -7,6 +7,7 @@
 #include "private_key.h"
 
 #include <nabto/nabto_device.h>
+#include <nabto/nabto_device_experimental.h>
 #include "device_config.h"
 #include "logging.h"
 #include "simple_webserver.h"
@@ -136,20 +137,17 @@ void tcp_tunnel_deinit(struct tcp_tunnel* tunnel)
 }
 
 char* generate_pairing_url(const char* productId, const char* deviceId, const char* deviceFingerprint,
-                               const char* clientServerUrl, const char* clientServerKey,
-                               const char* pairingPassword, const char* pairingServerConnectToken) {
-char* buffer = calloc(1, 1024); // long enough!
+                           const char* pairingPassword, const char* pairingServerConnectToken)
+{
+    char* buffer = calloc(1, 1024); // long enough!
 
-sprintf(buffer, "https://tcp-tunnel.nabto.com/pairing?ProductId=%s&DeviceId=%s&DeviceFingerprint=%s&ClientServerUrl=%s&ClientServerKey=%s&PairingPassword=%s&ClientServerConnectToken=%s",
+    sprintf(buffer, "https://tcp-tunnel.nabto.com/pairing?p=%s&d=%s&fp=%s&pwd=%s&sct=%s",
             productId,
             deviceId,
             deviceFingerprint,
-            clientServerUrl,
-            clientServerKey,
             pairingPassword,
             pairingServerConnectToken);
-
-return buffer;
+    return buffer;
 }
 
 void print_item(const char* item)
@@ -194,8 +192,9 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG,"connect to the AP fail");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        char buffer[42];
         ESP_LOGI(TAG, "got ip:%s",
-                 ip4addr_ntoa(&event->ip_info.ip));
+                 esp_ip4addr_ntoa(&event->ip_info.ip, buffer, sizeof(buffer)));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
@@ -305,7 +304,7 @@ bool handle_main(struct tcp_tunnel* tunnel)
 {
 
 
-    
+
 
     NabtoDevice* device = nabto_device_new();
 
@@ -363,16 +362,13 @@ bool handle_main(struct tcp_tunnel* tunnel)
         tunnel->pairingServerConnectToken = strdup(tcpTunnelState.pairingServerConnectToken);
     }
 
-    nm_iam_enable_client_settings(&iam, dc.clientServerUrl, dc.clientServerKey);
-
-
     // Add a tunnel service to localhost port 80 .. ie. make tunnels to the local webserver possible
     nabto_device_add_tcp_tunnel_service(device, "http", "http", "127.0.0.1", 80);
 
     char* deviceFingerprint;
     nabto_device_get_device_fingerprint_full_hex(device, &deviceFingerprint);
-    
-    char* pairingUrl = generate_pairing_url(dc.productId, dc.deviceId, deviceFingerprint, dc.clientServerUrl, dc.clientServerKey, tcpTunnelState.pairingPassword, tcpTunnelState.pairingServerConnectToken);
+
+    char* pairingUrl = generate_pairing_url(dc.productId, dc.deviceId, deviceFingerprint, tcpTunnelState.pairingPassword, tcpTunnelState.pairingServerConnectToken);
 
     load_iam_config(&iam);
 
@@ -390,8 +386,6 @@ bool handle_main(struct tcp_tunnel* tunnel)
     printf("# Fingerprint:       %s" NEWLINE, deviceFingerprint);
     printf("# Pairing password:  %s" NEWLINE, tcpTunnelState.pairingPassword);
     printf("# Paring SCT:        %s" NEWLINE, tcpTunnelState.pairingServerConnectToken);
-    printf("# Client Server Url: %s" NEWLINE, dc.clientServerUrl);
-    printf("# Client Server Key: %s" NEWLINE, dc.clientServerKey);
     printf("# Version:           %s" NEWLINE, nabto_device_version());
     printf("# Pairing URL:       %s" NEWLINE, pairingUrl);
 
@@ -422,7 +416,7 @@ bool handle_main(struct tcp_tunnel* tunnel)
     device_event_handler_deinit(&eventHandler);
 
     stop_webserver(webserver);
-    
+
 
     nabto_device_stop(device);
     nm_iam_deinit(&iam);
