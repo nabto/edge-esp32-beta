@@ -18,7 +18,7 @@ static void esp32_async_resolve_v6(struct np_dns* obj, const char* host, struct 
 
 void esp32_async_resolve(u8_t family, const char* host, struct np_ip_address* ips, size_t ipsSize, size_t* ipsResolved, struct np_completion_event* completionEvent);
 
-static struct np_dns_functions vtable = {
+static struct np_dns_functions module = {
     .async_resolve_v4 = &esp32_async_resolve_v4,
     .async_resolve_v6 = &esp32_async_resolve_v6
 };
@@ -26,7 +26,7 @@ static struct np_dns_functions vtable = {
 struct np_dns esp32_dns_create_impl()
 {
     struct np_dns obj;
-    obj.vptr = &vtable;
+    obj.mptr = &module;
     obj.data = NULL;
     return obj;
 }

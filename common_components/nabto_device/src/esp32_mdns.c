@@ -37,14 +37,14 @@ void esp32_mdns_stop()
     // TODO
 }
 
-static struct np_mdns_functions vtable = {
+static struct np_mdns_functions module = {
     .publish_service = &publish_service
 };
 
 struct np_mdns esp32_mdns_get_impl()
 {
     struct np_mdns obj;
-    obj.vptr = &vtable;
+    obj.mptr = &module;
     obj.data = NULL;
     return obj;
 }
